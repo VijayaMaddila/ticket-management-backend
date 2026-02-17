@@ -1,14 +1,16 @@
-# Use a lightweight Java image
+# Stage 1: Build
+FROM eclipse-temurin:17-jdk-alpine AS build
+
+WORKDIR /app
+COPY . .
+RUN ./mvnw clean package -DskipTests
+
+# Stage 2: Run
 FROM eclipse-temurin:17-jdk-alpine
 
-# Set working directory inside container
 WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
 
-# Copy the built jar into the container
-COPY target/*.jar app.jar
-
-# Expose port 8080 (or your Spring Boot port)
 EXPOSE 8080
 
-# Run the jar
-ENTRYPOINT ["java","-jar","app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]

@@ -7,7 +7,7 @@ import com.ticketmanagement.service.ChatService;
 
 @RestController
 @RequestMapping("/api/chat")
-@CrossOrigin
+@CrossOrigin(origins = "https://your-vercel-domain.vercel.app")
 public class ChatController {
 
     @Autowired

@@ -14,7 +14,7 @@ import com.ticketmanagement.service.TicketAuditLogService;
 
 @RestController
 @RequestMapping("/api/tickets/audit")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = "https://your-vercel-domain.vercel.app")
 public class TicketAuditLogController {
 
     private final TicketAuditLogService auditLogService;

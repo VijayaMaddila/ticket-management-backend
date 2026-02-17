@@ -13,7 +13,7 @@ import com.ticketmanagement.util.JwtUtil;
 
 @RestController
 @RequestMapping("/api/users")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = "https://your-vercel-domain.vercel.app")
 public class UserController {
 
 	@Autowired

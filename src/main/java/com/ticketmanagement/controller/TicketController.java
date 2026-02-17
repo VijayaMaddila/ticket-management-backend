@@ -12,7 +12,7 @@ import com.ticketmanagement.service.TicketService;
 
 @RestController
 @RequestMapping("/api/tickets")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = "https://your-vercel-domain.vercel.app")
 public class TicketController {
 
     @Autowired

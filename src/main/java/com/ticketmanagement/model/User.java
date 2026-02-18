@@ -33,10 +33,7 @@ public class User {
 
     private String password;
     
-    @ManyToOne
-    @JoinColumn(name="tema_id")
-    private Team team;
-
+   
     @Enumerated(EnumType.STRING)
     private Role role; 
 
@@ -51,14 +48,13 @@ public class User {
     public User() {}
 
 
-	public User(Long id, String name, String email, String password, Team team, Role role, LocalDateTime createdAt,
+	public User(Long id, String name, String email, String password, Role role, LocalDateTime createdAt,
 			byte[] photo) {
 		super();
 		this.id = id;
 		this.name = name;
 		this.email = email;
 		this.password = password;
-		this.team = team;
 		this.role = role;
 		this.createdAt = createdAt;
 		this.photo = photo;
@@ -105,14 +101,7 @@ public class User {
 	}
 
 
-	public Team getTeam() {
-		return team;
-	}
-
-
-	public void setTeam(Team team) {
-		this.team = team;
-	}
+	
 
 
 	public Role getRole() {

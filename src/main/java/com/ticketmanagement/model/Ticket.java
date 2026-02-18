@@ -61,9 +61,7 @@ public class Ticket {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
     
-    @ManyToOne
-    @JoinColumn(name="team_id")
-    private Team assignedTeam;
+   
     
     @PrePersist
     protected void onCreate() {
@@ -85,7 +83,7 @@ public class Ticket {
 
 	public Ticket(Long id, String title, String description, RequestType requestType, Priority priority, Status status,
 			String requestedDataset, LocalDate dueDate, User requester, User assignedTo, LocalDateTime createdAt,
-			LocalDateTime updatedAt, Team assignedTeam) {
+			LocalDateTime updatedAt) {
 		super();
 		this.id = id;
 		this.title = title;
@@ -99,7 +97,7 @@ public class Ticket {
 		this.assignedTo = assignedTo;
 		this.createdAt = createdAt;
 		this.updatedAt = updatedAt;
-		this.assignedTeam = assignedTeam;
+	
 	}
 
 	public Long getId() {
@@ -198,13 +196,7 @@ public class Ticket {
 		this.updatedAt = updatedAt;
 	}
 
-	public Team getAssignedTeam() {
-		return assignedTeam;
-	}
-
-	public void setAssignedTeam(Team assignedTeam) {
-		this.assignedTeam = assignedTeam;
-	}
+	
 
 	
     

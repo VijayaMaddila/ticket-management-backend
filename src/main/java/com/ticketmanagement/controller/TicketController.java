@@ -26,9 +26,16 @@ public class TicketController {
 
    
     @GetMapping
-    public ResponseEntity<List<Ticket>> getAllTickets() {
-        return ResponseEntity.ok(ticketService.getAllTickets());
+    public ResponseEntity<?> getAllTickets() {
+        try {
+            return ResponseEntity.ok(ticketService.getAllTickets());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError()
+                    .body("ERROR: " + e.getClass().getName() + " - " + e.getMessage());
+        }
     }
+
 
     
     @GetMapping("/{ticketId}")

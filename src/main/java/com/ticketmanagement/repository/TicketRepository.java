@@ -5,8 +5,6 @@ import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
-
-import com.ticketmanagement.model.Team;
 import com.ticketmanagement.model.Ticket;
 import com.ticketmanagement.model.User;
 
@@ -19,7 +17,7 @@ public interface TicketRepository  extends JpaRepository<Ticket,Long>,JpaSpecifi
 
 	List<Ticket> findByRequester(User requester);
 
-	List<Ticket> findByAssignedTeam(Team team);
+	
 
 
 }

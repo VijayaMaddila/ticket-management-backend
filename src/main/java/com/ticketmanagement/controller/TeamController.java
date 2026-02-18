@@ -10,7 +10,7 @@ import com.ticketmanagement.repository.TeamRepository;
 
 @RestController
 @RequestMapping("/api/teams")
-@CrossOrigin(origins = "https://segmento-resolve.vercel.app/")
+@CrossOrigin(origins ={"https://segmento-resolve.vercel.app", "http://localhost:5173"})
 public class TeamController {
 
     @Autowired

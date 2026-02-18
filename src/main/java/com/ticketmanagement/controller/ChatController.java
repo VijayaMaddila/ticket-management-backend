@@ -7,7 +7,7 @@ import com.ticketmanagement.service.ChatService;
 
 @RestController
 @RequestMapping("/api/chat")
-@CrossOrigin(origins = "https://segmento-resolve.vercel.app/")
+@CrossOrigin(origins = {"https://segmento-resolve.vercel.app", "http://localhost:5173"})
 public class ChatController {
 
     @Autowired

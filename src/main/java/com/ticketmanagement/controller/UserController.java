@@ -13,7 +13,7 @@ import com.ticketmanagement.util.JwtUtil;
 
 @RestController
 @RequestMapping("/api/users")
-@CrossOrigin(origins = "https://segmento-resolve.vercel.app/")
+@CrossOrigin(origins = {"https://segmento-resolve.vercel.app", "http://localhost:5173"})
 public class UserController {
 
 	@Autowired

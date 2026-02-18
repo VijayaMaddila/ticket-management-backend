@@ -13,7 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-@CrossOrigin(origins = {"https://segmento-resolve.vercel.app", "http://localhost:5173"})
+@CrossOrigin(origins = "https://segmento-resolve.vercel.app/")
 @RestController
 @RequestMapping("/api")
 public class LoginController {

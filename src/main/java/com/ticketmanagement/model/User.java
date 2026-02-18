@@ -2,6 +2,7 @@ package com.ticketmanagement.model;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.ticketmanagement.model.role.Role;
 
@@ -40,11 +41,10 @@ public class User {
     private LocalDateTime createdAt = LocalDateTime.now();
 
    
-    @Lob
-    @Column(name = "photo", nullable = true)
-    private byte[] photo; // store actual image bytes in DB
+    @Column(name = "photo", columnDefinition = "BYTEA")
+    @JsonIgnore
+    private byte[] photo;
 
-    
     public User() {}
 
 

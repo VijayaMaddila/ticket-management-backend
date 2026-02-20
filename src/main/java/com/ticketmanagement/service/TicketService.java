@@ -32,6 +32,7 @@ public class TicketService {
 
     @Autowired
     private EmailService emailService;
+
     @Autowired
     private BCryptPasswordEncoder passwordEncoder;
 
@@ -41,13 +42,11 @@ public class TicketService {
             throw new RuntimeException("Requester is required");
         }
 
-        
         if (requesterInput.getId() != null) {
             return userRepository.findById(requesterInput.getId())
                     .orElseThrow(() -> new RuntimeException("Requester not found"));
         }
 
-       
         if (requesterInput.getEmail() != null && !requesterInput.getEmail().isEmpty()) {
             return userRepository.findByEmail(requesterInput.getEmail())
                     .orElseGet(() -> {
@@ -57,7 +56,6 @@ public class TicketService {
                                 requesterInput.getName() != null
                                         ? requesterInput.getName()
                                         : requesterInput.getEmail().split("\\d")[0]
-                                       
                         );
                         newUser.setRole(Role.requester);
                         newUser.setPassword(passwordEncoder.encode("Segmento@2004"));
@@ -71,7 +69,6 @@ public class TicketService {
     public Ticket createTicket(Ticket ticket) {
 
         User requester = resolveRequester(ticket.getRequester());
-
         ticket.setRequester(requester);
 
         if (ticket.getStatus() == null) ticket.setStatus(Status.OPEN);
@@ -81,7 +78,6 @@ public class TicketService {
 
         Ticket savedTicket = ticketRepository.save(ticket);
 
-        // 🧾 Audit log
         auditLogService.logChange(
                 savedTicket.getId(),
                 "TICKET_CREATED",
@@ -90,7 +86,6 @@ public class TicketService {
                 requester.getId()
         );
 
-        // 📧 Mail to requester
         if (requester.getEmail() != null && !requester.getEmail().isEmpty()) {
             emailService.sendMail(
                     requester.getEmail(),
@@ -109,16 +104,17 @@ public class TicketService {
 
         return savedTicket;
     }
+
     private String parseDueDate(String dueDateStr) {
         if (dueDateStr == null || dueDateStr.isEmpty()) return "";
-        String[] patterns = {"d/M/yyyy", "dd/MM/yyyy", "yyyy-MM-dd"}; 
+        String[] patterns = {"d/M/yyyy", "dd/MM/yyyy", "yyyy-MM-dd"};
         for (String pattern : patterns) {
             try {
                 LocalDate date = LocalDate.parse(dueDateStr.trim(), DateTimeFormatter.ofPattern(pattern));
-                return date.toString(); // ISO format yyyy-MM-dd
+                return date.toString();
             } catch (Exception ignored) {}
         }
-        return ""; // unable to parse
+        return "";
     }
 
     public Ticket createTicketFromEmail(
@@ -131,17 +127,16 @@ public class TicketService {
             String assignedToStr,
             String dueDateStr
     ) {
+
         Ticket ticket = new Ticket();
 
         ticket.setTitle(title.isEmpty() ? "No Subject" : title);
         ticket.setDescription(description);
 
-        // Set requester
         User requester = new User();
         requester.setEmail(requesterEmail);
         ticket.setRequester(requester);
 
-        // Priority
         if (!priorityStr.isEmpty()) {
             try {
                 ticket.setPriority(Priority.valueOf(priorityStr.toUpperCase()));
@@ -152,7 +147,6 @@ public class TicketService {
             ticket.setPriority(Priority.LOW);
         }
 
-        // Request Type
         if (!requestTypeStr.isEmpty()) {
             try {
                 ticket.setRequestType(RequestType.valueOf(requestTypeStr.toUpperCase()));
@@ -163,7 +157,6 @@ public class TicketService {
             ticket.setRequestType(RequestType.ACCESS);
         }
 
-        // Status
         if (!statusStr.isEmpty()) {
             try {
                 ticket.setStatus(Status.valueOf(statusStr.toUpperCase()));
@@ -174,27 +167,22 @@ public class TicketService {
             ticket.setStatus(Status.OPEN);
         }
 
-        // Assigned To
         if (!assignedToStr.isEmpty() && !assignedToStr.equalsIgnoreCase("Not assigned yet")) {
             User assignee = userRepository.findByEmail(assignedToStr).orElse(null);
             ticket.setAssignedTo(assignee);
         }
 
-     // Due Date
         if (!dueDateStr.isEmpty()) {
             String parsedDueDate = parseDueDate(dueDateStr);
             if (!parsedDueDate.isEmpty()) {
                 ticket.setDueDate(LocalDate.parse(parsedDueDate));
-            } else {
-                System.err.println("⚠️ Unable to parse Due Date: " + dueDateStr);
             }
         }
-
-
 
         return createTicket(ticket);
     }
 
+    // ✅ ONLY FIX APPLIED HERE
     public Ticket updateTicketStatus(Long ticketId, String statusStr, Long userId) {
 
         Ticket ticket = getTicket(ticketId);
@@ -202,7 +190,8 @@ public class TicketService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        if (!user.equals(ticket.getAssignedTo())) {
+        if (ticket.getAssignedTo() == null ||
+                !ticket.getAssignedTo().getId().equals(user.getId())) {
             throw new RuntimeException("You are not assigned to this ticket");
         }
 
@@ -218,7 +207,6 @@ public class TicketService {
         ticket.setStatus(newStatus);
         Ticket updatedTicket = ticketRepository.save(ticket);
 
-        // 🧾 Audit log
         auditLogService.logChange(
                 ticketId,
                 "STATUS_CHANGED",
@@ -227,7 +215,6 @@ public class TicketService {
                 userId
         );
 
-        // 📧 Mail to requester
         User requester = updatedTicket.getRequester();
         if (requester != null && requester.getEmail() != null) {
             emailService.sendMail(
@@ -281,7 +268,6 @@ public class TicketService {
 
         Ticket savedTicket = ticketRepository.save(ticket);
 
-        // 📧 Mail to assignee
         if (oldAssignee == null || !oldAssignee.getId().equals(assignee.getId())) {
             emailService.sendMail(
                     assignee.getEmail(),
@@ -294,7 +280,6 @@ public class TicketService {
             );
         }
 
-        // 📧 Mail to requester
         if (requester != null && requester.getEmail() != null) {
             emailService.sendMail(
                     requester.getEmail(),

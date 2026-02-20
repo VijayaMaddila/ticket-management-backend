@@ -39,7 +39,7 @@ public class EmailListenerService {
     @Value("${mail.imap.port}")
     private String imapPort;
 
-    @Scheduled(fixedDelay = 6)
+    @Scheduled(fixedDelay = 60000)
     public void checkEmail() {
         System.out.println("Email listener triggered");
 

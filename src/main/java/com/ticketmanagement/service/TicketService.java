@@ -32,12 +32,14 @@ public class TicketService {
 
     @Autowired
     private EmailService emailService;
-
+    
     @Autowired
     private BCryptPasswordEncoder passwordEncoder;
 
-    private User resolveRequester(User requesterInput) {
+    @Autowired
+    private SlackNotificationService slackService;
 
+    private User resolveRequester(User requesterInput) {
         if (requesterInput == null) {
             throw new RuntimeException("Requester is required");
         }
@@ -78,6 +80,7 @@ public class TicketService {
 
         Ticket savedTicket = ticketRepository.save(ticket);
 
+        //Audit log
         auditLogService.logChange(
                 savedTicket.getId(),
                 "TICKET_CREATED",
@@ -86,6 +89,7 @@ public class TicketService {
                 requester.getId()
         );
 
+        //Mail to requester
         if (requester.getEmail() != null && !requester.getEmail().isEmpty()) {
             emailService.sendMail(
                     requester.getEmail(),
@@ -102,16 +106,25 @@ public class TicketService {
             );
         }
 
+        // Slack notification for ticket creation
+        String slackMessage = "🎫 *New Ticket Created!*\n" +
+                              "*ID:* " + savedTicket.getId() + "\n" +
+                              "*Title:* " + savedTicket.getTitle() + "\n" +
+                              "*Priority:* " + savedTicket.getPriority() + "\n" +
+                              "*Status:* " + savedTicket.getStatus() + "\n" +
+                              "*Requester:* " + requester.getName();
+        slackService.sendNotification(slackMessage);
+
         return savedTicket;
     }
 
     private String parseDueDate(String dueDateStr) {
         if (dueDateStr == null || dueDateStr.isEmpty()) return "";
-        String[] patterns = {"d/M/yyyy", "dd/MM/yyyy", "yyyy-MM-dd"};
+        String[] patterns = {"d/M/yyyy", "dd/MM/yyyy", "yyyy-MM-dd"}; 
         for (String pattern : patterns) {
             try {
                 LocalDate date = LocalDate.parse(dueDateStr.trim(), DateTimeFormatter.ofPattern(pattern));
-                return date.toString();
+                return date.toString(); 
             } catch (Exception ignored) {}
         }
         return "";
@@ -127,7 +140,6 @@ public class TicketService {
             String assignedToStr,
             String dueDateStr
     ) {
-
         Ticket ticket = new Ticket();
 
         ticket.setTitle(title.isEmpty() ? "No Subject" : title);
@@ -138,34 +150,19 @@ public class TicketService {
         ticket.setRequester(requester);
 
         if (!priorityStr.isEmpty()) {
-            try {
-                ticket.setPriority(Priority.valueOf(priorityStr.toUpperCase()));
-            } catch (Exception e) {
-                ticket.setPriority(Priority.LOW);
-            }
-        } else {
-            ticket.setPriority(Priority.LOW);
-        }
+            try { ticket.setPriority(Priority.valueOf(priorityStr.toUpperCase())); }
+            catch (Exception e) { ticket.setPriority(Priority.LOW); }
+        } else { ticket.setPriority(Priority.LOW); }
 
         if (!requestTypeStr.isEmpty()) {
-            try {
-                ticket.setRequestType(RequestType.valueOf(requestTypeStr.toUpperCase()));
-            } catch (Exception e) {
-                ticket.setRequestType(RequestType.ACCESS);
-            }
-        } else {
-            ticket.setRequestType(RequestType.ACCESS);
-        }
+            try { ticket.setRequestType(RequestType.valueOf(requestTypeStr.toUpperCase())); }
+            catch (Exception e) { ticket.setRequestType(RequestType.ACCESS); }
+        } else { ticket.setRequestType(RequestType.ACCESS); }
 
         if (!statusStr.isEmpty()) {
-            try {
-                ticket.setStatus(Status.valueOf(statusStr.toUpperCase()));
-            } catch (Exception e) {
-                ticket.setStatus(Status.OPEN);
-            }
-        } else {
-            ticket.setStatus(Status.OPEN);
-        }
+            try { ticket.setStatus(Status.valueOf(statusStr.toUpperCase())); }
+            catch (Exception e) { ticket.setStatus(Status.OPEN); }
+        } else { ticket.setStatus(Status.OPEN); }
 
         if (!assignedToStr.isEmpty() && !assignedToStr.equalsIgnoreCase("Not assigned yet")) {
             User assignee = userRepository.findByEmail(assignedToStr).orElse(null);
@@ -174,35 +171,28 @@ public class TicketService {
 
         if (!dueDateStr.isEmpty()) {
             String parsedDueDate = parseDueDate(dueDateStr);
-            if (!parsedDueDate.isEmpty()) {
-                ticket.setDueDate(LocalDate.parse(parsedDueDate));
-            }
+            if (!parsedDueDate.isEmpty()) ticket.setDueDate(LocalDate.parse(parsedDueDate));
+            else System.err.println("⚠️ Unable to parse Due Date: " + dueDateStr);
         }
 
         return createTicket(ticket);
     }
 
-    // ✅ ONLY FIX APPLIED HERE
     public Ticket updateTicketStatus(Long ticketId, String statusStr, Long userId) {
-
         Ticket ticket = getTicket(ticketId);
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        if (ticket.getAssignedTo() == null ||
-                !ticket.getAssignedTo().getId().equals(user.getId())) {
+        if (!user.equals(ticket.getAssignedTo())) {
             throw new RuntimeException("You are not assigned to this ticket");
         }
 
         Status oldStatus = ticket.getStatus();
         Status newStatus;
 
-        try {
-            newStatus = Status.valueOf(statusStr.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new RuntimeException("Invalid status");
-        }
+        try { newStatus = Status.valueOf(statusStr.toUpperCase()); }
+        catch (IllegalArgumentException e) { throw new RuntimeException("Invalid status"); }
 
         ticket.setStatus(newStatus);
         Ticket updatedTicket = ticketRepository.save(ticket);
@@ -215,12 +205,11 @@ public class TicketService {
                 userId
         );
 
-        User requester = updatedTicket.getRequester();
-        if (requester != null && requester.getEmail() != null) {
+        if (updatedTicket.getRequester() != null && updatedTicket.getRequester().getEmail() != null) {
             emailService.sendMail(
-                    requester.getEmail(),
+                    updatedTicket.getRequester().getEmail(),
                     "Ticket Status Updated",
-                    "Hello " + requester.getName() + ",\n\n" +
+                    "Hello " + updatedTicket.getRequester().getName() + ",\n\n" +
                             "Your ticket status has been updated.\n\n" +
                             "Ticket ID       : " + updatedTicket.getId() + "\n" +
                             "Title           : " + updatedTicket.getTitle() + "\n" +
@@ -230,22 +219,24 @@ public class TicketService {
             );
         }
 
+        //Slack notification for status update
+        String slackMessage = "*Ticket Status Updated!*\n" +
+                              "*ID:* " + updatedTicket.getId() + "\n" +
+                              "*Title:* " + updatedTicket.getTitle() + "\n" +
+                              "*Previous Status:* " + oldStatus + "\n" +
+                              "*New Status:* " + newStatus + "\n" +
+                              "*Updated By:* " + user.getName();
+        slackService.sendNotification(slackMessage);
+
         return updatedTicket;
     }
 
-    public List<Ticket> getAllTickets() {
-        return ticketRepository.findAll();
-    }
-
-    public List<Ticket> getUnassignedTickets() {
-        return ticketRepository.findByAssignedToIsNull();
-    }
-
+    public List<Ticket> getAllTickets() { return ticketRepository.findAll(); }
+    public List<Ticket> getUnassignedTickets() { return ticketRepository.findByAssignedToIsNull(); }
     public Ticket getTicket(Long ticketId) {
         return ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new RuntimeException("Ticket not found"));
     }
-
     public List<Ticket> getTicketsAssignedToUser(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -253,7 +244,6 @@ public class TicketService {
     }
 
     public Ticket assignTicket(Long ticketId, Long assigneeId, String assignedBy) {
-
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new RuntimeException("Ticket not found"));
 
@@ -294,6 +284,16 @@ public class TicketService {
             );
         }
 
+        //Slack notification for assignment
+        String slackMessage = "Ticket Assigned!\n" +
+                              "ID: " + savedTicket.getId() + "\n" +
+                              "Title: " + savedTicket.getTitle() + "\n" +
+                              "Assigned To: " + assignee.getName() + "\n" +
+                              "*=Assigned By: " + assignedBy;
+        slackService.sendNotification(slackMessage);
+        
+
         return savedTicket;
+        
     }
 }

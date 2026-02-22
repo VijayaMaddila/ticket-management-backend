@@ -296,4 +296,10 @@ public class TicketService {
         return savedTicket;
         
     }
-}
+
+	public Ticket saveTicket(Ticket ticket) {
+		        return ticketRepository.save(ticket);
+		    }
+		
+	}
+

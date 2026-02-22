@@ -26,9 +26,8 @@ public class SlackController{
 
     @Autowired
     private UserRepository userRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    
+    @Autowired private PasswordEncoder passwordEncoder;
 
     @PostMapping(value = "/create-ticket",
             consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
@@ -36,57 +35,47 @@ public class SlackController{
             @RequestParam("text") String text,
             @RequestParam("user_name") String slackUsername) {
 
+       
+        new Thread(() -> {
+            try {
+                processTicket(text, slackUsername);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
+
+        return ResponseEntity.ok("Ticket is being created...");
+    }
+    private void processTicket(String text, String slackUsername) {
+
         String[] parts = text.split("\\|");
 
         if (parts.length < 6) {
-            return ResponseEntity.ok(
-                    "Use format:\n" +
-                    "/createticket Title | Description | REQUEST_TYPE | PRIORITY | DATASET | DUE_DATE(yyyy-MM-dd)"
-            );
+            return;
         }
 
-        try {
+        Ticket ticket = new Ticket();
+        ticket.setTitle(parts[0].trim());
+        ticket.setDescription(parts[1].trim());
+        ticket.setRequestType(RequestType.valueOf(parts[2].trim().toUpperCase()));
+        ticket.setPriority(Priority.valueOf(parts[3].trim().toUpperCase()));
+        ticket.setRequestedDataset(parts[4].trim());
+        ticket.setDueDate(LocalDate.parse(parts[5].trim()));
+        ticket.setStatus(Status.OPEN);
 
-            Ticket ticket = new Ticket();
-            ticket.setTitle(parts[0].trim());
-            ticket.setDescription(parts[1].trim());
+        String email = slackUsername + "@slack.com";
 
-            ticket.setRequestType(
-                    RequestType.valueOf(parts[2].trim().toUpperCase()));
+        User requester = userRepository.findByEmail(email)
+                .orElseGet(() -> {
+                    User newUser = new User();
+                    newUser.setName(slackUsername);
+                    newUser.setEmail(email);
+                    newUser.setPassword(passwordEncoder.encode("default123"));
+                    newUser.setRole(Role.requester);
+                    return userRepository.save(newUser);
+                });
 
-            ticket.setPriority(
-                    Priority.valueOf(parts[3].trim().toUpperCase()));
-
-            ticket.setRequestedDataset(parts[4].trim());
-
-            ticket.setDueDate(
-                    LocalDate.parse(parts[5].trim())); 
-
-            ticket.setStatus(Status.OPEN);
-
-          
-            String email = slackUsername + "@slack.com";
-
-            User requester = userRepository.findByEmail(email)
-                    .orElseGet(() -> {
-                        User newUser = new User();
-                        newUser.setName(slackUsername);
-                        newUser.setEmail(email);
-                        newUser.setPassword(
-                                passwordEncoder.encode("default123"));
-                        newUser.setRole(Role.requester);
-                        return userRepository.save(newUser);
-                    });
-
-            ticket.setRequester(requester);
-
-            ticketService.saveTicket(ticket);
-
-            return ResponseEntity.ok("Ticket Created Successfully!");
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.ok("Error: " + e.getMessage());
-        }
+        ticket.setRequester(requester);
+        ticketService.saveTicket(ticket);
     }
 }

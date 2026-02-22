@@ -4,18 +4,22 @@ import com.ticketmanagement.model.Ticket;
 import com.ticketmanagement.model.User;
 import com.ticketmanagement.model.role.Priority;
 import com.ticketmanagement.model.role.RequestType;
+import com.ticketmanagement.model.role.Role;
 import com.ticketmanagement.model.role.Status;
-import com.ticketmanagement.service.TicketService;
 import com.ticketmanagement.repository.UserRepository;
+import com.ticketmanagement.service.TicketService;
+
+import java.time.LocalDate;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/slack")
-public class SlackController {
+public class SlackController{
 
     @Autowired
     private TicketService ticketService;
@@ -23,17 +27,21 @@ public class SlackController {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     @PostMapping(value = "/create-ticket",
             consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
     public ResponseEntity<String> createTicket(
-            @RequestParam("text") String text) {
+            @RequestParam("text") String text,
+            @RequestParam("user_name") String slackUsername) {
 
         String[] parts = text.split("\\|");
 
-        if (parts.length < 4) {
+        if (parts.length < 6) {
             return ResponseEntity.ok(
                     "Use format:\n" +
-                    "/createticket Title | Description | REQUEST_TYPE | PRIORITY"
+                    "/createticket Title | Description | REQUEST_TYPE | PRIORITY | DATASET | DUE_DATE(yyyy-MM-dd)"
             );
         }
 
@@ -49,12 +57,26 @@ public class SlackController {
             ticket.setPriority(
                     Priority.valueOf(parts[3].trim().toUpperCase()));
 
+            ticket.setRequestedDataset(parts[4].trim());
+
+            ticket.setDueDate(
+                    LocalDate.parse(parts[5].trim())); 
+
             ticket.setStatus(Status.OPEN);
 
-           
-            User requester = userRepository.findByEmail("admin@gmail.com")
-                    .orElseThrow(() ->
-                            new RuntimeException("Default user not found"));
+          
+            String email = slackUsername + "@slack.com";
+
+            User requester = userRepository.findByEmail(email)
+                    .orElseGet(() -> {
+                        User newUser = new User();
+                        newUser.setName(slackUsername);
+                        newUser.setEmail(email);
+                        newUser.setPassword(
+                                passwordEncoder.encode("default123"));
+                        newUser.setRole(Role.requester);
+                        return userRepository.save(newUser);
+                    });
 
             ticket.setRequester(requester);
 
@@ -62,8 +84,9 @@ public class SlackController {
 
             return ResponseEntity.ok("Ticket Created Successfully!");
 
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.ok("Invalid RequestType or Priority value.");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.ok("Error: " + e.getMessage());
         }
     }
 }

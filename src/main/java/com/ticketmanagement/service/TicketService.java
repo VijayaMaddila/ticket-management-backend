@@ -18,6 +18,8 @@ import com.ticketmanagement.model.role.Status;
 import com.ticketmanagement.repository.TicketRepository;
 import com.ticketmanagement.repository.UserRepository;
 
+import jakarta.transaction.Transactional;
+
 @Service
 public class TicketService {
 
@@ -296,7 +298,7 @@ public class TicketService {
         return savedTicket;
         
     }
-
+    @Transactional
 	public Ticket saveTicket(Ticket ticket) {
 		        return ticketRepository.save(ticket);
 		    }

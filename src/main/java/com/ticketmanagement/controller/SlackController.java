@@ -35,16 +35,13 @@ public class SlackController{
             @RequestParam("text") String text,
             @RequestParam("user_name") String slackUsername) {
 
-       
-        new Thread(() -> {
-            try {
-                processTicket(text, slackUsername);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }).start();
-
-        return ResponseEntity.ok("Ticket is created");
+        try {
+            processTicket(text, slackUsername);
+            return ResponseEntity.ok("Ticket is created");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Failed to create ticket");
+        }
     }
     private void processTicket(String text, String slackUsername) {
 

@@ -44,7 +44,7 @@ public class SlackController{
             }
         }).start();
 
-        return ResponseEntity.ok("Ticket is being created...");
+        return ResponseEntity.ok("Ticket is created");
     }
     private void processTicket(String text, String slackUsername) {
 
